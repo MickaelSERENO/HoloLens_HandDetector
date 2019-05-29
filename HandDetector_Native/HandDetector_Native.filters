@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resources">
+      <UniqueIdentifier>a8f82da1-4749-47d6-8b95-0058d5bea803</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tga;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CritSec.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="H264NetworkSink.h" />
+    <ClInclude Include="H264MediaSink.h" />
+    <ClInclude Include="utils.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="Marker.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="StreamOperations.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="SampleData.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="AsyncOperation.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="AsyncCallback.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseAttribute.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="H264MediaSinkProxy.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="H264NetworkSink.cpp" />
+    <ClCompile Include="H264MediaSink.cpp" />
+    <ClCompile Include="AsyncOperation.cpp">
+      <Filter>Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="DllLoaded.cpp">
+      <Filter>Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="H264MediaSinkProxy.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+</Project>
