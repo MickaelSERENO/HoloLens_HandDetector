@@ -2,7 +2,7 @@
 
 namespace Sereno
 {
-	// T: Type of the parent object
+	/** \brief Implementation of the interface IMFAsyncCallback, used to queue async callback operations*/
 	template<class T>
 	class AsyncCallback : public IMFAsyncCallback
 	{

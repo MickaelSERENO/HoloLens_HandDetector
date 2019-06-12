@@ -7,6 +7,7 @@
 
 namespace Sereno
 {
+	/** Class containing the type of the operation being treated */
 	class AsyncOperation : public IUnknown
 	{
 	public:

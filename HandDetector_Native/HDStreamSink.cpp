@@ -350,10 +350,12 @@ namespace Sereno
 		}
 
 		//Create the hand detector
+		//We detect between 25 and 80 centimeters, with a blob of minimum size = 900 pixels
+		//Maximum wrist length : 100 pixels
 		if (guiNewSubtype == MFVideoFormat_L8)
-			m_handDetector = new HandDetector<D8Func>(width, height, 800, 15, 1000);
+			m_handDetector = new HandDetection<D8Func>(width, height, 250, 800, 40, 900, 90);
 		else if (guiNewSubtype == MFVideoFormat_D16 || guiNewSubtype == MFVideoFormat_L16)
-			m_handDetector = new HandDetector<D16Func>(width, height, 800, 15, 1000);
+			m_handDetector = new HandDetection<D16Func>(width, height, 250, 800, 40, 900, 90);
 		
 		m_mediaSubtype = guiNewSubtype;
 		TRACE(L"Media type setted. Width: %d, Height: %d, framerate: %f, format: %ws\n", width, height, (float)framerateNum/framerateDenum, (guiNewSubtype == MFVideoFormat_D16 ? L"D16" : (guiNewSubtype == MFVideoFormat_RGB24 ? L"RGB24" : (guiNewSubtype == MFVideoFormat_L8 ? L"L8" : L"ARGB32"))))
@@ -537,9 +539,6 @@ namespace Sereno
 								
 				//Update the hand position
 				CHECK(UpdateHandDetection(sample, rawBuffer, bufferCurrentLength))
-								
-				//Write to ppm
-				CHECK(WriteSampleToFile(rawBuffer, bufferCurrentLength))
 
 				//Release the frame
 				sampleBuffer->Unlock();
@@ -574,7 +573,7 @@ namespace Sereno
 		if (m_handDetector != NULL)
 		{
 			//Update the status
-			m_handDetector->updateDetector(rawBuffer);
+			m_handDetector->updateDetection(rawBuffer);
 
 			//Call the callback interface
 			if (m_clbk != nullptr)
@@ -584,9 +583,9 @@ namespace Sereno
 				//Determine what depth function to use
 				DepthFunc depthFunc = NULL;
 				if (m_mediaSubtype == MFVideoFormat_D16 || m_mediaSubtype == MFVideoFormat_L16)
-					depthFunc = &D16Func::computeDepth;
+					depthFunc = &D16Func::depthAt;
 				else if (m_mediaSubtype == MFVideoFormat_L8)
-					depthFunc = &D8Func::computeDepth;
+					depthFunc = &D8Func::depthAt;
 
 				//Get the camera parameters
 				HandDetector_Native::CameraParameter camera;
@@ -597,6 +596,7 @@ namespace Sereno
 				if(SUCCEEDED(sample->GetUnknown(MFSampleExtension_Spatial_CameraCoordinateSystem, IID_PPV_ARGS(&spUnknown))))
 					spUnknown.As(&spSpatialCoordinateSystem);
 
+				
 				memset(&camera.CameraViewTransform, 0, sizeof(camera.CameraViewTransform));
 				memset(&camera.CameraProjectionTransform, 0, sizeof(camera.CameraProjectionTransform));
 				memset(&camera.CameraIntrinsics, 0, sizeof(camera.CameraIntrinsics));
@@ -615,7 +615,7 @@ namespace Sereno
 					sensorStreamingCameraIntrinsics = (SensorStreaming::ICameraIntrinsics*)spUnknown.Get();
 
 				//If found
-				if (depthFunc)
+				if(depthFunc)
 				{
 					//Create the WinRT proxy object
 					if (sensorStreamingCameraIntrinsics == NULL)
@@ -648,8 +648,8 @@ namespace Sereno
 							HandDetector_Native::Hand^ hand = ref new HandDetector_Native::Hand();
 
 							float outXY[2];
-							float inXY[2] = { h.palmX, h.palmY};
-							float depth = depthFunc(h.palmX, h.palmY, m_streamWidth, rawBuffer)/1000.0f;
+							float inXY[2] = { (float)h.palmX, (float)h.palmY};
+							float depth = -depthFunc(h.palmX, h.palmY, m_streamWidth, rawBuffer)/1000.0f;
 							
 							sensorStreamingCameraIntrinsics->MapImagePointToCameraUnitPlane(inXY, outXY);
 							float z = depth / sqrt(outXY[0] * outXY[0] + outXY[1] * outXY[1] + 1);
@@ -664,7 +664,7 @@ namespace Sereno
 
 								inXY[0] = f.tipX;
 								inXY[1] = f.tipY;
-								depth = depthFunc(f.tipX, f.tipY, m_streamWidth, rawBuffer)/1000.0f;
+								depth = -depthFunc(f.tipX, f.tipY, m_streamWidth, rawBuffer)/1000.0f;
 								sensorStreamingCameraIntrinsics->MapImagePointToCameraUnitPlane(inXY, outXY);
 								float z = depth / sqrt(outXY[0] * outXY[0] + outXY[1] * outXY[1] + 1);
 
@@ -720,5 +720,6 @@ namespace Sereno
 		fwrite(txt.c_str(), sizeof(char), txt.length(), f);
 		TRACE(L"End writting")
 		fclose(f);
+		return S_OK;
 	}
 }

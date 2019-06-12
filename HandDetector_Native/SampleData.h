@@ -7,14 +7,16 @@
 
 namespace Sereno
 {
+	/** Type of a sample received*/
 	enum SampleType
 	{
-		ST_NO_TYPE,
-		ST_MARKER,
-		ST_SAMPLE,
-		ST_MEDIATYPE
+		ST_NO_TYPE, /** No sample*/
+		ST_MARKER,  /** Marker sample*/
+		ST_SAMPLE,  /** Sample (image) sample*/
+		ST_MEDIATYPE /** Changement in the media type*/
 	};
 
+	/** SampleData class. Permits to store the SampleType and its value in a union structure*/
 	struct SampleData
 	{
 		SampleData(SampleType t) : type(ST_NO_TYPE)

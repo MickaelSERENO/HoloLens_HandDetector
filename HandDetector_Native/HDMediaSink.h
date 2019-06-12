@@ -28,6 +28,7 @@
 
 namespace Sereno
 {
+	/** \brief Class handling media (like device media streams). This is the first MediaFoundation class starting the parsing pipeline*/
 	class HDMediaSink : public Microsoft::WRL::RuntimeClass<Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::RuntimeClassType::WinRtClassicComMix>,
 					 									      ABI::Windows::Media::IMediaExtension, IMFMediaSink, IMFClockStateSink>, public CBaseAttributes<>
 	{

@@ -22,9 +22,14 @@
 
 namespace Sereno
 {
+	/** Class representing a marker in the video stream.*/
 	class Marker
 	{
 		public:
+			/** Constructor
+			 * \param eMarkerType the type of the marker
+			 * \param pVarMarkerValue the marker value. This value is copied
+			 * \param pVarContextValue the marker context. This value is copied*/
 			Marker(MFSTREAMSINK_MARKER_TYPE eMarkerType, const PROPVARIANT* pVarMarkerValue , const PROPVARIANT* pVarContextValue) : m_eMarkerType(eMarkerType)
 			{
 				PropVariantCopy(&m_varMarkerValue, pVarMarkerValue);

@@ -10,6 +10,7 @@
 #include <wrl\wrappers\corewrappers.h>
 
 
+/** Check the result of a HRESULT function*/
 #define CHECK(x) \
 	{\
 		HRESULT _hr = (x);\
@@ -20,8 +21,10 @@
 		}\
 	}
 
+/** Get the filename being compiled*/
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__))
 
+/** Debug trace on screen*/
 #define TRACE(format, ...) \
 	{\
 		WCHAR _debugBuf[1024]; \
@@ -36,13 +39,14 @@
 #define TRACE(format, ...) {}
 
 
-
+/** Throw an exception based on hr*/
 #define Throw(hr)\
 	{\
 		assert(FAILED(hr));\
 		throw ref new Platform::Exception(hr);\
 	}
 
+/** Throw an exception if hr is a failure*/
 #define ThrowIfError(hr)\
 	{\
 		if(FAILED(hr))\

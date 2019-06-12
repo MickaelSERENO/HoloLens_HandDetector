@@ -154,7 +154,7 @@ namespace Sereno
 			DWORD    m_identifier = 0; /*!< The Stream identifier defined by the MediaSink parent*/
 			uint32_t m_frameID    = 0; /*!< The current frame ID*/
 
-			IHandDetector* m_handDetector = NULL; /*!< The Hand Detector object computing the new hands position*/
+			IHandDetection* m_handDetector = NULL; /*!< The Hand Detector object computing the new hands position*/
 
 			HandDetector_Native::IHDMediaSinkClbk^ m_clbk; /*!< The callback interface to call when the detection status changes*/
 	};

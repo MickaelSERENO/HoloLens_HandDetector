@@ -51,8 +51,6 @@ namespace Sereno.HandDetector
                 {
                     Debug.WriteLine($"SourceKind : {info.SourceKind}");
                     Debug.WriteLine($"Device : {info.DeviceInformation.Name}:{info.DeviceInformation.Id}");
-                    foreach (var mediaDesc in info.VideoProfileMediaDescription)
-                        Debug.WriteLine($"{mediaDesc.Width}x{mediaDesc.Height}x{mediaDesc.FrameRate} : {mediaDesc.Subtype}");
                     Debug.WriteLine("");
                 }
                 Debug.WriteLine("-------------------------------------------------------------\n");
@@ -87,21 +85,11 @@ namespace Sereno.HandDetector
                     {
                         //Check the depth capabilities
                         if (info.SourceKind == MediaFrameSourceKind.Depth)
-                        { 
-                            foreach (var mediaDesc in info.VideoProfileMediaDescription)
-                            {
-                                Debug.WriteLine($"{mediaDesc.Width}x{mediaDesc.Height}x{mediaDesc.FrameRate} : {mediaDesc.Subtype}");
+                        {                            
+                            selectedFrameSourceGroup = group;
+                            selectedFrameSourceInfo = info;
 
-                                //Check the Subtype
-                                if(mediaDesc.Subtype == "L8" || mediaDesc.Subtype == "D16" || mediaDesc.Subtype == "RGB24" || mediaDesc.Subtype == "ARGB32" || mediaDesc.Subtype == "MPEG")
-                                {
-                                    selectedFrameSourceGroup = group;
-                                    selectedFrameSourceInfo = info;
-
-                                    Debug.WriteLine($"Found Device : {info.DeviceInformation.Name}:{info.DeviceInformation.Id}");
-                                    break;
-                                }
-                            }
+                            Debug.WriteLine($"Found Device : {info.DeviceInformation.Name}:{info.DeviceInformation.Id}");
                         }
                     }
 
