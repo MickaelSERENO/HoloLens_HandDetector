@@ -669,9 +669,13 @@ namespace Sereno
                 int hullY = MIN_HD(minHullY, maxHullY);
 
 				//Truncate along the maximum length
-				int maxLengthSq = m_maxHandLength*m_maxHandLength/(img.size[0]*img.size[0] + img.size[1]*img.size[1]) * img.size[0]*img.size[0];
-				if(hullY*hullY > maxLengthSq)
-					hullY = (int)sqrt(maxLengthSq);
+				float maxLengthSq = (float)m_maxHandLength*m_maxHandLength*img.size[0]*img.size[0]/(img.size[0]*img.size[0] + img.size[1]*img.size[1]);
+				if((float)(hullY*hullY) > maxLengthSq)
+					hullY = (int)ceil(sqrt(maxLengthSq));
+
+				//Check that we can compute the wrist
+				if (hullY == 0)
+					return false;
 
                 if(hullY < img.size[1])
                 {

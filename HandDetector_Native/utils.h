@@ -35,8 +35,8 @@
 		OutputDebugString(_debugBuf);\
 	}
 
-#undef TRACE
-#define TRACE(format, ...) {}
+//#undef TRACE
+//#define TRACE(format, ...) {}
 
 
 /** Throw an exception based on hr*/

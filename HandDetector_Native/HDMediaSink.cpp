@@ -134,7 +134,7 @@ namespace Sereno
 		TRACE(L"Correct index\n")
 		*ppStreamSink = m_stream.Get();
 		if(m_stream.Get())
-			m_stream->AddRef();
+			m_stream.Get()->AddRef();
 		return S_OK;
 	}
 
@@ -149,7 +149,7 @@ namespace Sereno
 		TRACE("Correct index\n")
 		*ppStreamSink = m_stream.Get();
 		if(m_stream.Get())
-			m_stream->AddRef();
+			m_stream.Get()->AddRef();
 		return S_OK;
 	}
 
