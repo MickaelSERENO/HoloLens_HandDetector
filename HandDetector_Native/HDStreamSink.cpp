@@ -353,9 +353,9 @@ namespace Sereno
 		//We detect between 25 and 80 centimeters, with a blob of minimum size = 900 pixels
 		//Maximum wrist length : 100 pixels
 		if (guiNewSubtype == MFVideoFormat_L8)
-			m_handDetector = new HandDetection<D8Func>(width, height, 250, 800, 40, 900, 90);
+			m_handDetector = new HandDetection<D8Func>(width, height, 300, 800, 25, 500, 100);
 		else if (guiNewSubtype == MFVideoFormat_D16 || guiNewSubtype == MFVideoFormat_L16)
-			m_handDetector = new HandDetection<D16Func>(width, height, 250, 800, 40, 900, 90);
+			m_handDetector = new HandDetection<D16Func>(width, height, 300, 800, 25, 500, 100);
 		
 		m_mediaSubtype = guiNewSubtype;
 		TRACE(L"Media type setted. Width: %d, Height: %d, framerate: %f, format: %ws\n", width, height, (float)framerateNum/framerateDenum, (guiNewSubtype == MFVideoFormat_D16 ? L"D16" : (guiNewSubtype == MFVideoFormat_RGB24 ? L"RGB24" : (guiNewSubtype == MFVideoFormat_L8 ? L"L8" : L"ARGB32"))))
@@ -625,10 +625,12 @@ namespace Sereno
 							HandDetector_Native::Hand^ hand = ref new HandDetector_Native::Hand();
 							hand->InPixels = true;
 
+							//Palm position
 							hand->PalmX = h.palmX;
 							hand->PalmY = h.palmY;
 							hand->PalmZ = depthFunc(h.palmX, h.palmY, m_streamWidth, rawBuffer);
 
+							//Fingers
 							for (const auto& f : h.fingers)
 							{
 								HandDetector_Native::Finger finger;
@@ -637,6 +639,11 @@ namespace Sereno
 								finger.TipZ = depthFunc(f.tipX, f.tipY, m_streamWidth, rawBuffer);
 								hand->Fingers->Append(finger);
 							}
+
+							//Wrist
+							hand->WristX = h.wristPosX;
+							hand->WristY = h.wristPosY;
+							hand->WristZ = depthFunc((uint16_t)hand->WristX, (uint16_t)hand->WristY, m_streamWidth, rawBuffer);
 
 							hands->Append(hand);
 						}
@@ -647,6 +654,7 @@ namespace Sereno
 						{
 							HandDetector_Native::Hand^ hand = ref new HandDetector_Native::Hand();
 
+							//Palm Position
 							float outXY[2];
 							float inXY[2] = { (float)h.palmX, (float)h.palmY};
 							float depth = -depthFunc(h.palmX, h.palmY, m_streamWidth, rawBuffer)/1000.0f;
@@ -658,6 +666,7 @@ namespace Sereno
 							hand->PalmY = z*outXY[1];
 							hand->PalmZ = z;
 
+							//Fingers
 							for (const auto& f : h.fingers)
 							{
 								HandDetector_Native::Finger finger;
@@ -666,13 +675,35 @@ namespace Sereno
 								inXY[1] = f.tipY;
 								depth = -depthFunc(f.tipX, f.tipY, m_streamWidth, rawBuffer)/1000.0f;
 								sensorStreamingCameraIntrinsics->MapImagePointToCameraUnitPlane(inXY, outXY);
-								float z = depth / sqrt(outXY[0] * outXY[0] + outXY[1] * outXY[1] + 1);
+								z = depth / sqrt(outXY[0] * outXY[0] + outXY[1] * outXY[1] + 1);
 
 								finger.TipX = z*outXY[0];
 								finger.TipY = z*outXY[1];
 								finger.TipZ = z;
 								hand->Fingers->Append(finger);
 							}
+
+							//Wrist positions
+							inXY[0] = h.wristPosX;
+							inXY[1] = h.wristPosY;
+							depth = -depthFunc(h.wristPosX, h.wristPosY, m_streamWidth, rawBuffer) / 1000.0f;
+							sensorStreamingCameraIntrinsics->MapImagePointToCameraUnitPlane(inXY, outXY);
+
+							z = depth / sqrt(outXY[0] * outXY[0] + outXY[1] * outXY[1] + 1);
+							hand->WristX = z * outXY[0];
+							hand->WristY = z * outXY[1];
+							hand->WristZ = z;
+
+							//Copy the ROIs information
+							hand->BlobROIMinX = h.blobMinROI[0];
+							hand->BlobROIMinY = h.blobMinROI[1];
+							hand->BlobROIMaxX = h.blobMaxROI[0];
+							hand->BlobROIMaxY = h.blobMaxROI[1];
+
+							hand->WristROIMinX = h.wristMinROI[0];
+							hand->WristROIMinY = h.wristMinROI[1];
+							hand->WristROIMaxX = h.wristMaxROI[0];
+							hand->WristROIMaxY = h.wristMaxROI[1];
 
 							hands->Append(hand);
 						}

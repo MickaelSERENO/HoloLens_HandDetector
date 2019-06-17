@@ -50,6 +50,39 @@ namespace HandDetector_Native
 
 			/*!< In the case of not being able to fetch intrinsics camera parameters, the coordinate are given in pixels. This property will then be set to true*/
 			property bool InPixels;
+
+			/*!< The min X ROI of the detected blob where the hand belongs to in the image (pixels) space*/
+			property int BlobROIMinX;
+
+			/*!< The min Y ROI of the detected blob where the hand belongs to in the image (pixels) space*/
+			property int BlobROIMinY;
+
+			/*!< The max X ROI of the detected blob where the hand belongs to in the image (pixels) space*/
+			property int BlobROIMaxX;
+
+			/*!< The max Y ROI of the detected blob where the hand belongs to in the image (pixels) space*/
+			property int BlobROIMaxY;
+
+			/*!< The min X ROI of the detected hand (fingers to wrist) in the image (pixels) space*/
+			property int WristROIMinX;
+
+			/*!< The min Y ROI of the detected hand (fingers to wrist) in the image (pixels) space*/
+			property int WristROIMinY;
+
+			/*!< The max X ROI of the detected hand (fingers to wrist) in the image (pixels) space*/
+			property int WristROIMaxX;
+
+			/*!< The max Y ROI of the detected hand (fingers to wrist) in the image (pixels) space*/
+			property int WristROIMaxY;
+
+			/*!< The wrist X position*/
+			property float WristX;
+
+			/*The wrist Y position*/
+			property float WristY;
+
+			/*The wrist Z position*/
+			property float WristZ;
 		private:
 			Windows::Foundation::Collections::IVector<Finger>^ m_fingers; /*!< The fingers array*/
 	};
