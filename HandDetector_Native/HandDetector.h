@@ -144,12 +144,13 @@ namespace Sereno
 		 * \param maxDelta the maximum delta beteen the pixels neighboor in order to separate blobs
 		 * \param minArea the minimum hand area to look at (e.g., 500)
 		 * \param maxHandLength the maximum hand length in pixel along the major axis*/
-		HandDetection(uint16_t width, uint16_t height, uint16_t minRange, uint16_t maxRange, uint16_t maxDelta, uint16_t minArea, uint16_t maxHandLength) : IHandDetection(width, height), m_minRange(minRange), m_maxRange(maxRange), m_maxDelta(maxDelta), m_minArea(minArea), m_maxHandLength(maxHandLength)
+		HandDetection(uint16_t width, uint16_t height, uint16_t minRange, uint16_t maxRange, uint16_t maxDelta, uint16_t minArea, uint16_t maxHandLength) : IHandDetection(width, height), m_minRange(MAX_HD(1, minRange)), m_maxRange(maxRange), m_maxDelta(maxDelta), m_minArea(minArea), m_maxHandLength(maxHandLength)
 		{}
 
 		void updateDetection(uint8_t* data)
 		{
 			std::vector<Line*> lines;
+			lines.reserve(m_height); //We can say that we have ~1 line object per line image.
 			std::list<Blob*> blobs;
 			uint16_t idLineN1 = 0;
 			uint16_t idLineN2 = 0;
@@ -165,7 +166,7 @@ namespace Sereno
 					while (i < m_width)
 					{
 						currentDepth = TDepthFunc::depthAt(i, j, m_width, data);
-						if (currentDepth <= m_maxRange && currentDepth != 0 && currentDepth >= m_minRange)
+						if (currentDepth <= m_maxRange && currentDepth >= m_minRange)
 							break;
 						i++;
 					}
@@ -188,7 +189,7 @@ namespace Sereno
 						while (i < m_width)
 						{
 							currentDepth = TDepthFunc::depthAt(i, j, m_width, data);
-							if (currentDepth > m_maxRange || currentDepth == 0 || currentDepth < m_minRange || std::abs(currentDepth - lastDepth) > m_maxDelta)
+							if (currentDepth > m_maxRange || currentDepth < m_minRange || std::abs(currentDepth - lastDepth) > m_maxDelta)
 								break;
 							lastDepth = currentDepth;
 							i++;
@@ -223,9 +224,9 @@ namespace Sereno
 
 			//Free everything
 			for (auto it = blobs.begin(); it != blobs.end(); it++)
-				delete * it;
+				delete* it;
 			for (auto it = lines.begin(); it != lines.end(); it++)
-				delete * it;
+				delete* it;
 		}
 
 	private:
@@ -263,7 +264,7 @@ namespace Sereno
 				for (uint16_t id2 = idLineN2; id2 < lines.size(); id2++)
 				{
 					Line* lineN2 = lines[id2];
-					if (lineN1->endX > lineN2->startX && lineN1->startX < lineN2->endX)
+					if (lineN1->endX >= lineN2->startX && lineN1->startX <= lineN2->endX)
 					{
 						//Add this line to the blob
 						if (lineN2->blob == NULL)
@@ -362,7 +363,7 @@ namespace Sereno
 					}
 
 					//First close the shape
-					cv::morphologyEx(img, img, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
+					//cv::morphologyEx(img, img, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
 
 					//Find the contour
 					std::vector<std::vector<cv::Point>> contours;
@@ -383,8 +384,11 @@ namespace Sereno
 						cv::Point wristPos(0, 0);
 
 						//Delete the forearm along the vertical axis
-						if (img.size[1] < img.size[0])
-							getWristROI(img, contours[maxContourID], hull, handROI, wristPos);
+						if(img.size[1] < img.size[0])
+						{
+							if (!getWristROI(img, contours[maxContourID], hull, handROI, wristPos))
+								continue;
+						}
 						else
 						{
 							//Determine most upper part
@@ -437,7 +441,8 @@ namespace Sereno
 								flip(rotImage, rotImage, 0);
 							}
 
-							getWristROI(rotImage, rotContour, hull, handROI, wristPos);
+							if (!getWristROI(rotImage, rotContour, hull, handROI, wristPos))
+								continue;
 
 							//Apply the inverse transformation
 
@@ -491,59 +496,64 @@ namespace Sereno
 
 			//Compute the distance transform to find the Palm position
 			//To each pixels we will apply the depth function to take into account that the farthest a point is, the smaller is the basic distance transform (because less pixels)
+			//cv::Mat transformHandImg(handImg);
+			//cv::morphologyEx(transformHandImg, transformHandImg, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
+			
 			cv::Mat distance;
 			cv::distanceTransform(handImg, distance, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
 
 			//Now determine the hand position
-			float maxPalmDist = distance.at<float>(0, 0) * TDepthFunc::depthAt(handROI.x + b->minROI[0], handROI.y + b->minROI[1], m_width, data);
+			float maxPalmDist = distance.at<float>(0, 0)*TDepthFunc::depthAt(handROI.x + b->minROI[0], handROI.y + b->minROI[1], m_width, data);
 			hand.palmX = 0;
 			hand.palmY = 0;
-#ifdef _OPENMP
-#pragma omp parallel
-			{
-				int ompPalmX = 0;
-				int ompPalmY = 0;
-				float ompMaxPalmDist = distance.at<float>(0, 0) * TDepthFunc::depthAt(handROI.x + b->minROI[0], handROI.y + b->minROI[1], m_width, data);
-#pragma omp for
-				for (int i = 0; i < distance.rows; i++)
-				{
-					for (int j = 0; j < distance.cols; j++)
-					{
-						float dist = distance.at<float>(i, j) * TDepthFunc::depthAt(j + handROI.x + b->minROI[0], i + handROI.y + b->minROI[1], m_width, data);
-						if (ompMaxPalmDist < dist)
-						{
-							ompPalmX = j;
-							ompPalmY = i;
-							ompMaxPalmDist = dist;
-						}
-					}
-				}
-
-#pragma omp critical
-				{
-					if (ompMaxPalmDist > maxPalmDist)
-					{
-						maxPalmDist = ompMaxPalmDist;
-						hand.palmX = ompPalmX;
-						hand.palmY = ompPalmY;
-					}
-				}
-			}
-#else
+//#ifdef _OPENMP
+//#pragma omp parallel
+//			{
+//				int ompPalmX = 0;
+//				int ompPalmY = 0;
+//				float ompMaxPalmDist = distance.at<float>(0, 0)*TDepthFunc::depthAt(handROI.x + b->minROI[0], handROI.y + b->minROI[1], m_width, data);
+//#pragma omp for
+//				for (int i = 0; i < distance.rows; i++)
+//				{
+//					for (int j = 0; j < distance.cols; j++)
+//					{
+//						float dist = distance.at<float>(i, j)*TDepthFunc::depthAt(j + handROI.x + b->minROI[0], i + handROI.y + b->minROI[1], m_width, data);
+//						float distCmp = (1.0f + 0.5f/15.0f * MIN_HD(15, i-ompPalmY))*ompMaxPalmDist; //Apply a coefficient for not detecting the arm instead of the hand
+//						if(distCmp < dist)
+//						{
+//							ompPalmX = j;
+//							ompPalmY = i;
+//							ompMaxPalmDist = dist;
+//						}
+//					}
+//				}
+//
+//#pragma omp critical
+//				{
+//					if (ompMaxPalmDist > maxPalmDist)
+//					{
+//						maxPalmDist = ompMaxPalmDist;
+//						hand.palmX = ompPalmX;
+//						hand.palmY = ompPalmY;
+//					}
+//				}
+//			}
+//#else
 			for (int i = 0; i < distance.rows; i++)
 			{
 				for (int j = 0; j < distance.cols; j++)
 				{
-					float dist = distance.at<float>(i, j);
-					if (maxPalmDist < dist)
+					float dist = distance.at<float>(i, j);// *TDepthFunc::depthAt(j + handROI.x + b->minROI[0], i + handROI.y + b->minROI[1], m_width, data);
+					float distCmp = (1.0f + 0.30f/15.0f * MIN_HD(15, i-hand.palmY))* maxPalmDist; //Apply a coefficient for not detecting the arm instead of the hand
+					if(distCmp < dist)
 					{
-						hand.palmX = j;
-						hand.palmY = i;
+						hand.palmX  = j;
+						hand.palmY  = i;
 						maxPalmDist = dist;
 					}
 				}
 			}
-#endif
+//#endif
 
 			hand.palmX += b->minROI[0] + handROI.x;
 			hand.palmY += b->minROI[1] + handROI.y;
@@ -554,7 +564,7 @@ namespace Sereno
 			for (const cv::Vec4i& v : defects)
 			{
 				float depth = v[3] / 256.0f;
-				if (depth > 15.0f) //  filter defects by depth, e.g more than 10
+				if (depth > 20.0f) //  filter defects by depth, e.g more than 10
 				{
 					int startID = v[0]; cv::Point ptStart(contour[startID]);
 					int endID = v[1]; cv::Point ptEnd(contour[endID]);
@@ -595,8 +605,8 @@ namespace Sereno
 				Finger finger;
 				finger.tipX = ptStart.x + b->minROI[0];
 				finger.tipY = ptStart.y + b->minROI[1];
-				if (!fingerPointsTop(b, handROI, hand, finger, handImg, wristPos))
-					return false;
+				//if (!fingerPointsTop(b, handROI, hand, finger, handImg, wristPos))
+				//	return false;
 				hand.fingers.push_back(finger);
 
 				for (const auto& v : validDefects)
@@ -604,8 +614,8 @@ namespace Sereno
 					int endID = v[1]; cv::Point ptEnd(contour[endID]);
 					finger.tipX = ptEnd.x + b->minROI[0];
 					finger.tipY = ptEnd.y + b->minROI[1];
-					if (!fingerPointsTop(b, handROI, hand, finger, handImg, wristPos))
-						return false;
+					//if (!fingerPointsTop(b, handROI, hand, finger, handImg, wristPos))
+					//	return false;
 					hand.fingers.push_back(finger);
 				}
 			}
@@ -616,13 +626,13 @@ namespace Sereno
 				finger.tipX = firstFinger->x + b->minROI[0];
 				finger.tipY = firstFinger->y + b->minROI[1];
 
-				//float handFingerX = (float)(finger.tipX - hand.palmX);
-				//float handFingerY = (float)(finger.tipY - hand.palmY);
+				float handFingerX = (float)(finger.tipX - hand.palmX);
+				float handFingerY = (float)(finger.tipY - hand.palmY);
 
-				//if (handFingerX * handFingerX + handFingerY * handFingerY >= m_minFirstSqDist)
+				if (handFingerX * handFingerX + handFingerY * handFingerY >= m_minFirstSqDist)
 				{
-					if (!fingerPointsTop(b, handROI, hand, finger, handImg, wristPos))
-						return false;
+					//if (!fingerPointsTop(b, handROI, hand, finger, handImg, wristPos))
+					//	return false;
 					hand.fingers.push_back(finger);
 				}
 			}
@@ -651,8 +661,9 @@ namespace Sereno
 		 * \param contour the contour computed
 		 * \param hull the convex hull computed
 		 * \param roi[out] the ROI computed
-		 * \param wristPos[out] the wrist position*/
-		void getWristROI(const cv::Mat & img, const std::vector<cv::Point> & contour, const std::vector<int> & hull, cv::Rect & roi, cv::Point & wristPos)
+		 * \param wristPos[out] the wrist position
+		 * \return true if the wrist is detected, false otherwise*/
+		bool getWristROI(const cv::Mat & img, const std::vector<cv::Point> & contour, const std::vector<int> & hull, cv::Rect & roi, cv::Point & wristPos)
 		{
 			roi = cv::Rect(0, 0, img.size[1] - 1, img.size[0] - 1);
 			wristPos.y = img.size[0] - 1;
@@ -715,7 +726,7 @@ namespace Sereno
 					wristPos.x = (maxPosWristX + minPosWristX) / 2;
 					wristPos.y = hullY;
 
-					return;
+					return true;
 				}
 
 				uint16_t * verticalGraph = (uint16_t*)calloc(verticalGraphSize, sizeof(uint16_t));
@@ -765,7 +776,14 @@ namespace Sereno
 
 				wristPos.x = (maxPosWristX + minPosWristX) / 2;
 				wristPos.y = rowWrist + hullY;
+
+				//Check if the wrist has "holes". If yes, then this is not a hand
+				//for (int i = minPosWristX; i < maxPosWristX; i++)
+				//	if (img.at<uint8_t>(rowWrist + hullY - 1, i) == 0)
+				//		return false;
 			}
+
+			return true;
 		}
 
 		/* \brief  Tell if a finger is pointing top or not. If we found a finger not pointing top, the object is not a hand

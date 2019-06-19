@@ -177,6 +177,7 @@
       <DisableSpecificWarnings>28204</DisableSpecificWarnings>
       <SDLCheck>false</SDLCheck>
       <OpenMPSupport>true</OpenMPSupport>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -212,6 +213,7 @@
       <DisableSpecificWarnings>28204</DisableSpecificWarnings>
       <SDLCheck>false</SDLCheck>
       <OpenMPSupport>true</OpenMPSupport>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -247,6 +249,7 @@
       <DisableSpecificWarnings>28204</DisableSpecificWarnings>
       <SDLCheck>false</SDLCheck>
       <OpenMPSupport>true</OpenMPSupport>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

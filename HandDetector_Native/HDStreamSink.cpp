@@ -353,9 +353,9 @@ namespace Sereno
 		//We detect between 25 and 80 centimeters, with a blob of minimum size = 900 pixels
 		//Maximum wrist length : 100 pixels
 		if (guiNewSubtype == MFVideoFormat_L8)
-			m_handDetector = new HandDetection<D8Func>(width, height, 300, 800, 25, 500, 100);
+			m_handDetector = new HandDetection<D8Func>(width, height, 250, 700, 40, 600, 100);
 		else if (guiNewSubtype == MFVideoFormat_D16 || guiNewSubtype == MFVideoFormat_L16)
-			m_handDetector = new HandDetection<D16Func>(width, height, 300, 800, 25, 500, 100);
+			m_handDetector = new HandDetection<D16Func>(width, height, 250, 700, 40, 600, 100);
 		
 		m_mediaSubtype = guiNewSubtype;
 		TRACE(L"Media type setted. Width: %d, Height: %d, framerate: %f, format: %ws\n", width, height, (float)framerateNum/framerateDenum, (guiNewSubtype == MFVideoFormat_D16 ? L"D16" : (guiNewSubtype == MFVideoFormat_RGB24 ? L"RGB24" : (guiNewSubtype == MFVideoFormat_L8 ? L"L8" : L"ARGB32"))))
@@ -643,7 +643,7 @@ namespace Sereno
 							//Wrist
 							hand->WristX = h.wristPosX;
 							hand->WristY = h.wristPosY;
-							hand->WristZ = depthFunc((uint16_t)hand->WristX, (uint16_t)hand->WristY, m_streamWidth, rawBuffer);
+							hand->WristZ = depthFunc(h.wristPosX, h.wristPosY, m_streamWidth, rawBuffer);
 
 							hands->Append(hand);
 						}
@@ -684,9 +684,9 @@ namespace Sereno
 							}
 
 							//Wrist positions
-							inXY[0] = h.wristPosX;
-							inXY[1] = h.wristPosY;
-							depth = -depthFunc(h.wristPosX, h.wristPosY, m_streamWidth, rawBuffer) / 1000.0f;
+							inXY[0] = (float)(h.wristPosX);
+							inXY[1] = (float)(h.wristPosY);
+							depth = -depthFunc(h.wristPosX, h.wristPosY, m_streamWidth, rawBuffer)/1000.0f;
 							sensorStreamingCameraIntrinsics->MapImagePointToCameraUnitPlane(inXY, outXY);
 
 							z = depth / sqrt(outXY[0] * outXY[0] + outXY[1] * outXY[1] + 1);
