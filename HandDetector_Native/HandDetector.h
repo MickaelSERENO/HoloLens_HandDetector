@@ -1,4 +1,5 @@
-#pragma once
+#ifndef  HANDDETECTION_INC
+#define  HANDDETECTION_INC
 
 #include <cstdint>
 #include <cstdlib>
@@ -200,11 +201,11 @@ namespace Sereno
 				}
 
 				//Update the blobs
-				updateBlob(blobs, lines, idLineN1, idLineN2);
+				updateBlob(data, lines, idLineN1, idLineN2, blobs);
 				idLineN1 = idLineN2;
 			}
 			//Insert the last blobs
-			updateBlob(blobs, lines, idLineN1, (uint16_t)lines.size());
+			updateBlob(data, lines, idLineN1, (uint16_t)lines.size(), blobs);
 
 			//Discard blobs with not enough area
 			for (auto it = blobs.begin(); it != blobs.end();)
@@ -224,18 +225,19 @@ namespace Sereno
 
 			//Free everything
 			for (auto it = blobs.begin(); it != blobs.end(); it++)
-				delete* it;
+				delete * it;
 			for (auto it = lines.begin(); it != lines.end(); it++)
-				delete* it;
+				delete * it;
 		}
 
 	private:
 		/** Update the blob data when a new image row has been processed
-		 * \param blobs[out] the blobs to update
+		 * \param data[in] the raw data
 		 * \param lines[in] the lines data of ALL the image
 		 * \param idLineN1[in] the index where the line N-1 starts in the lines array. idLineN2-idLineN1 == number of lines in the row N-1
-		 * \param idLineN2[in] the index where the line N start in the lines array. lines.size() - idLineN2 == number of lines in the row N-2*/
-		void updateBlob(std::list<Blob*> & blobs, const std::vector<Line*> & lines, uint16_t idLineN1, uint16_t idLineN2)
+		 * \param idLineN2[in] the index where the line N start in the lines array. lines.size() - idLineN2 == number of lines in the row N-2,
+		 * \param blobs[out] the blobs to update*/
+		void updateBlob(uint8_t * data, const std::vector<Line*> & lines, uint16_t idLineN1, uint16_t idLineN2, std::list<Blob*> & blobs)
 		{
 			//No lines added
 			if (idLineN2 == idLineN1)
@@ -266,54 +268,62 @@ namespace Sereno
 					Line* lineN2 = lines[id2];
 					if (lineN1->endX >= lineN2->startX && lineN1->startX <= lineN2->endX)
 					{
-						//Add this line to the blob
-						if (lineN2->blob == NULL)
+						for (int x = MAX_HD(lineN2->startX, lineN1->startX); x < MIN_HD(lineN2->endX, lineN1->endX); x++)
 						{
-							Blob* blob = lineN1->blob;
-							blob->lines.push_back(lineN2);
-							blob->area += lineN2->endX - lineN2->startX + 1;
-							uint16_t maxROI[] = { lineN2->endX,   lineN2->y };
-							uint16_t minROI[] = { lineN2->startX, lineN2->y };
-
-							for (uint8_t k = 0; k < 2; k++)
+							if (std::abs(TDepthFunc::depthAt(x, lineN1->y, m_width, data) -
+								TDepthFunc::depthAt(x, lineN2->y, m_width, data)) <= m_maxDelta)
 							{
-								blob->maxROI[k] = MAX_HD(maxROI[k], blob->maxROI[k]);
-								blob->minROI[k] = MIN_HD(minROI[k], blob->minROI[k]);
-							}
-
-							lineN2->blob = blob;
-						}
-
-						//Merge blobs
-						else if (lineN2->blob != lineN1->blob)
-						{
-							//Use lineN1->blob as the current blob
-							Blob* blob = lineN1->blob;
-
-							//Update blobs array and blobs assignment
-							for (auto it = blobs.begin(); it != blobs.end(); it++)
-							{
-								if (*it == lineN2->blob)
+								//Add this line to the blob
+								if (lineN2->blob == NULL)
 								{
-									//Update area and ROI
+									Blob* blob = lineN1->blob;
+									blob->lines.push_back(lineN2);
+									blob->area += lineN2->endX - lineN2->startX + 1;
+									uint16_t maxROI[] = { lineN2->endX,   lineN2->y };
+									uint16_t minROI[] = { lineN2->startX, lineN2->y };
+
 									for (uint8_t k = 0; k < 2; k++)
 									{
-										blob->minROI[k] = MIN_HD(blob->minROI[k], lineN2->blob->minROI[k]);
-										blob->maxROI[k] = MAX_HD(blob->maxROI[k], lineN2->blob->maxROI[k]);
+										blob->maxROI[k] = MAX_HD(maxROI[k], blob->maxROI[k]);
+										blob->minROI[k] = MIN_HD(minROI[k], blob->minROI[k]);
 									}
-									blob->area += lineN2->blob->area;
 
-									//Update assignment of each lines
-									for (Line* l : lineN2->blob->lines)
-									{
-										blob->lines.push_back(l);
-										l->blob = blob;
-									}
-									Blob* bToErase = *it;
-									blobs.erase(it);
-									delete bToErase;
-									break;
+									lineN2->blob = blob;
 								}
+
+								//Merge blobs
+								else if (lineN2->blob != lineN1->blob)
+								{
+									//Use lineN1->blob as the current blob
+									Blob* blob = lineN1->blob;
+
+									//Update blobs array and blobs assignment
+									for (auto it = blobs.begin(); it != blobs.end(); it++)
+									{
+										if (*it == lineN2->blob)
+										{
+											//Update area and ROI
+											for (uint8_t k = 0; k < 2; k++)
+											{
+												blob->minROI[k] = MIN_HD(blob->minROI[k], lineN2->blob->minROI[k]);
+												blob->maxROI[k] = MAX_HD(blob->maxROI[k], lineN2->blob->maxROI[k]);
+											}
+											blob->area += lineN2->blob->area;
+
+											//Update assignment of each lines
+											for (Line* l : lineN2->blob->lines)
+											{
+												blob->lines.push_back(l);
+												l->blob = blob;
+											}
+											Blob* bToErase = *it;
+											blobs.erase(it);
+											delete bToErase;
+											break;
+										}
+									}
+								}
+								break;
 							}
 						}
 					}
@@ -334,7 +344,7 @@ namespace Sereno
 				if (b->lines.size() > 1)
 				{
 					cv::Mat img = cv::Mat::zeros(cv::Size(b->maxROI[0] - b->minROI[0] + 1, b->maxROI[1] - b->minROI[1] + 1), CV_8UC1);
-					cv::Point firstFinger(img.cols/2, 0);
+					cv::Point firstFinger(img.cols / 2, 0);
 
 					int32_t lineSize = (int32_t)b->lines.size();
 
@@ -382,11 +392,12 @@ namespace Sereno
 					{
 						cv::Rect handROI(0, 0, img.cols, img.rows);
 						cv::Point wristPos(0, 0);
+						cv::Point palmPos(0, 0);
 
 						//Delete the forearm along the vertical axis
-						if(img.size[1] < img.size[0])
+						if (img.size[1] < img.size[0])
 						{
-							if (!getWristROI(img, contours[maxContourID], hull, handROI, wristPos))
+							if (!getWristROI(img, contours[maxContourID], hull, handROI, wristPos, palmPos))
 								continue;
 						}
 						else
@@ -441,7 +452,7 @@ namespace Sereno
 								flip(rotImage, rotImage, 0);
 							}
 
-							if (!getWristROI(rotImage, rotContour, hull, handROI, wristPos))
+							if (!getWristROI(rotImage, rotContour, hull, handROI, wristPos, palmPos))
 								continue;
 
 							//Apply the inverse transformation
@@ -461,14 +472,25 @@ namespace Sereno
 								wristPos.x = img.size[1] - 1 - wristPos.x;
 							else
 								wristPos.y = img.size[0] - 1 - wristPos.y;
+
+							//Palm
+							int palmPosX = palmPos.x;
+							palmPos.x = palmPos.y;
+							palmPos.y = palmPosX;
+							if (cw == -1)
+								palmPos.x = img.size[1] - 1 - palmPos.x;
+							else
+								palmPos.y = img.size[0] - 1 - palmPos.y;
 						}
 
 						//Now we can add this new detected hand
 						cv::Mat handImg = img(handROI);
 						wristPos.x += b->minROI[0];
 						wristPos.y += b->minROI[1];
-
-						if (!addNewHand(data, b, handImg, handROI, contours[maxContourID], hull, &firstFinger, wristPos))
+						palmPos.x += b->minROI[0];
+						palmPos.y += b->minROI[1];
+						
+						if (!addNewHand(data, b, handImg, handROI, contours[maxContourID], hull, &firstFinger, wristPos, palmPos))
 							continue;
 					}
 				}
@@ -485,8 +507,9 @@ namespace Sereno
 		 * \param hull the hand hull
 		 * \param firstFinger the first finger found. NULL if no first finger
 		 * \param wristPos the detected wrist position
+		 * \param palmPos the detected palm position
 		 * \return true if the hand was fully added, false otherwise. If false, it means that the hand was not detected as a hand */
-		bool addNewHand(uint8_t * data, const Blob * b, const cv::Mat & handImg, cv::Rect & handROI, const std::vector<cv::Point> & contour, const std::vector<int> & hull, const cv::Point * firstFinger, const cv::Point & wristPos)
+		bool addNewHand(uint8_t * data, const Blob * b, const cv::Mat & handImg, cv::Rect & handROI, const std::vector<cv::Point> & contour, const std::vector<int> & hull, const cv::Point * firstFinger, const cv::Point & wristPos, const cv::Point & palmPos)
 		{
 			Hand hand;
 
@@ -494,69 +517,8 @@ namespace Sereno
 			std::vector<cv::Vec4i> defects;
 			cv::convexityDefects(contour, hull, defects);
 
-			//Compute the distance transform to find the Palm position
-			//To each pixels we will apply the depth function to take into account that the farthest a point is, the smaller is the basic distance transform (because less pixels)
-			//cv::Mat transformHandImg(handImg);
-			//cv::morphologyEx(transformHandImg, transformHandImg, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
-			
-			cv::Mat distance;
-			cv::distanceTransform(handImg, distance, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
-
-			//Now determine the hand position
-			float maxPalmDist = distance.at<float>(0, 0)*TDepthFunc::depthAt(handROI.x + b->minROI[0], handROI.y + b->minROI[1], m_width, data);
-			hand.palmX = 0;
-			hand.palmY = 0;
-//#ifdef _OPENMP
-//#pragma omp parallel
-//			{
-//				int ompPalmX = 0;
-//				int ompPalmY = 0;
-//				float ompMaxPalmDist = distance.at<float>(0, 0)*TDepthFunc::depthAt(handROI.x + b->minROI[0], handROI.y + b->minROI[1], m_width, data);
-//#pragma omp for
-//				for (int i = 0; i < distance.rows; i++)
-//				{
-//					for (int j = 0; j < distance.cols; j++)
-//					{
-//						float dist = distance.at<float>(i, j)*TDepthFunc::depthAt(j + handROI.x + b->minROI[0], i + handROI.y + b->minROI[1], m_width, data);
-//						float distCmp = (1.0f + 0.5f/15.0f * MIN_HD(15, i-ompPalmY))*ompMaxPalmDist; //Apply a coefficient for not detecting the arm instead of the hand
-//						if(distCmp < dist)
-//						{
-//							ompPalmX = j;
-//							ompPalmY = i;
-//							ompMaxPalmDist = dist;
-//						}
-//					}
-//				}
-//
-//#pragma omp critical
-//				{
-//					if (ompMaxPalmDist > maxPalmDist)
-//					{
-//						maxPalmDist = ompMaxPalmDist;
-//						hand.palmX = ompPalmX;
-//						hand.palmY = ompPalmY;
-//					}
-//				}
-//			}
-//#else
-			for (int i = 0; i < distance.rows; i++)
-			{
-				for (int j = 0; j < distance.cols; j++)
-				{
-					float dist = distance.at<float>(i, j);// *TDepthFunc::depthAt(j + handROI.x + b->minROI[0], i + handROI.y + b->minROI[1], m_width, data);
-					float distCmp = (1.0f + 0.30f/15.0f * MIN_HD(15, i-hand.palmY))* maxPalmDist; //Apply a coefficient for not detecting the arm instead of the hand
-					if(distCmp < dist)
-					{
-						hand.palmX  = j;
-						hand.palmY  = i;
-						maxPalmDist = dist;
-					}
-				}
-			}
-//#endif
-
-			hand.palmX += b->minROI[0] + handROI.x;
-			hand.palmY += b->minROI[1] + handROI.y;
+			hand.palmX = palmPos.x;
+			hand.palmY = palmPos.y;
 
 			//Compute the finger position
 			std::vector<cv::Vec4i> validDefects;
@@ -663,9 +625,9 @@ namespace Sereno
 		 * \param roi[out] the ROI computed
 		 * \param wristPos[out] the wrist position
 		 * \return true if the wrist is detected, false otherwise*/
-		bool getWristROI(const cv::Mat & img, const std::vector<cv::Point> & contour, const std::vector<int> & hull, cv::Rect & roi, cv::Point & wristPos)
+		bool getWristROI(const cv::Mat & img, const std::vector<cv::Point> & contour, const std::vector<int> & hull, cv::Rect & roi, cv::Point & wristPos, cv::Point & palmPos)
 		{
-			roi = cv::Rect(0, 0, img.size[1] - 1, img.size[0] - 1);
+			roi = cv::Rect(0, 0, img.size[1], img.size[0]);
 			wristPos.y = img.size[0] - 1;
 			wristPos.x = (img.size[1] - 1) / 2;
 
@@ -704,7 +666,7 @@ namespace Sereno
 				size_t verticalGraphSize = MIN_HD(MIN_HD(std::abs(img.size[0] - 1 - hullY), (int)sqrt(maxLengthSq) - hullY), MAX_HD(2 * img.cols - hullY, 0));
 				if (verticalGraphSize == 0)
 				{
-					roi = cv::Rect(0, 0, img.size[1] - 1, hullY);
+					roi = cv::Rect(0, 0, img.size[1], hullY);
 
 					//Get hand wrist position
 					int minPosWristX = 0;
@@ -725,6 +687,8 @@ namespace Sereno
 
 					wristPos.x = (maxPosWristX + minPosWristX) / 2;
 					wristPos.y = hullY;
+
+					getPalmPos(img(roi), palmPos);
 
 					return true;
 				}
@@ -755,7 +719,7 @@ namespace Sereno
 				free(verticalGraph);
 
 				//Define the new ROI
-				roi = cv::Rect(0, 0, img.size[1] - 1, rowWrist + hullY);
+				roi = cv::Rect(0, 0, img.size[1], rowWrist + hullY);
 
 				//Get hand wrist position
 				int minPosWristX = 0;
@@ -781,9 +745,41 @@ namespace Sereno
 				//for (int i = minPosWristX; i < maxPosWristX; i++)
 				//	if (img.at<uint8_t>(rowWrist + hullY - 1, i) == 0)
 				//		return false;
+
+				getPalmPos(cv::Mat(img, roi), palmPos);
+
 			}
 
 			return true;
+		}
+
+		void getPalmPos(const cv::Mat & handImg, cv::Point & palmPos)
+		{
+			//Compute the distance transform to find the Palm position
+			//To each pixels we will apply the depth function to take into account that the farthest a point is, the smaller is the basic distance transform (because less pixels)
+			cv::Rect roi(0, 0, handImg.cols, MIN_HD(handImg.rows, m_maxHandLength * 2 / 3));
+			cv::Mat distance;
+			cv::distanceTransform(handImg(roi), distance, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
+
+			//Now determine the hand position
+			float maxPalmDist = distance.at<float>(0, 0);
+			palmPos.x = 0;
+			palmPos.y = 0;
+
+			for (int i = 0; i < distance.rows; i++)
+			{
+				for (int j = 0; j < distance.cols; j++)
+				{
+					float dist = distance.at<float>(i, j);
+					float distCmp = (1.0f + 0.20f / 10.0f * MIN_HD(10, i - palmPos.y)) * maxPalmDist; //Apply a coefficient for not detecting the arm instead of the hand
+					if (distCmp < dist)
+					{
+						palmPos.x = j;
+						palmPos.y = i;
+						maxPalmDist = dist;
+					}
+				}
+			}
 		}
 
 		/* \brief  Tell if a finger is pointing top or not. If we found a finger not pointing top, the object is not a hand
@@ -816,3 +812,4 @@ namespace Sereno
 		uint16_t m_minFirstSqDist = 25;
 	};
 }
+#endif
