@@ -771,7 +771,7 @@ namespace Sereno
 				for (int j = 0; j < distance.cols; j++)
 				{
 					float dist = distance.at<float>(i, j);
-					float distCmp = (1.0f + 0.20f / 10.0f * MIN_HD(10, i - palmPos.y)) * maxPalmDist; //Apply a coefficient for not detecting the arm instead of the hand
+					float distCmp = (1.0f + 0.10f / 10.0f * MIN_HD(10, i - palmPos.y)) * maxPalmDist; //Apply a coefficient for not detecting the arm instead of the hand
 					if (distCmp < dist)
 					{
 						palmPos.x = j;
