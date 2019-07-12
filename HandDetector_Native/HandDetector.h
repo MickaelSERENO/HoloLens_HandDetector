@@ -757,22 +757,22 @@ namespace Sereno
 		{
 			//Compute the distance transform to find the Palm position
 			//To each pixels we will apply the depth function to take into account that the farthest a point is, the smaller is the basic distance transform (because less pixels)
-			cv::Rect roi(0, 0, handImg.cols, MIN_HD(handImg.rows, m_maxHandLength * 2 / 3));
+
+			cv::Rect roi(0, 0, handImg.cols, handImg.rows); //Remove the bottom part of the hand
 			cv::Mat distance;
 			cv::distanceTransform(handImg(roi), distance, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
 
 			//Now determine the hand position
-			float maxPalmDist = distance.at<float>(0, 0);
+			float maxPalmDist = 0;
 			palmPos.x = 0;
 			palmPos.y = 0;
 
-			for (int i = 0; i < distance.rows; i++)
+			for (int i = distance.rows*1/3; i < distance.rows*2/3; i++)
 			{
 				for (int j = 0; j < distance.cols; j++)
 				{
 					float dist = distance.at<float>(i, j);
-					float distCmp = (1.0f + 0.10f / 10.0f * MIN_HD(10, i - palmPos.y)) * maxPalmDist; //Apply a coefficient for not detecting the arm instead of the hand
-					if (distCmp < dist)
+					if (maxPalmDist < dist)
 					{
 						palmPos.x = j;
 						palmPos.y = i;
