@@ -153,6 +153,7 @@ namespace Sereno
 			std::vector<Line*> lines;
 			lines.reserve(m_height); //We can say that we have ~1 line object per line image.
 			std::list<Blob*> blobs;
+
 			uint16_t idLineN1 = 0;
 			uint16_t idLineN2 = 0;
 
@@ -190,6 +191,7 @@ namespace Sereno
 						while (i < m_width)
 						{
 							currentDepth = TDepthFunc::depthAt(i, j, m_width, data);
+
 							if (currentDepth > m_maxRange || currentDepth < m_minRange || std::abs(currentDepth - lastDepth) > m_maxDelta)
 								break;
 							lastDepth = currentDepth;
@@ -270,8 +272,9 @@ namespace Sereno
 					{
 						for (int x = MAX_HD(lineN2->startX, lineN1->startX); x < MIN_HD(lineN2->endX, lineN1->endX); x++)
 						{
+							//Test the depth difference.
 							if (std::abs(TDepthFunc::depthAt(x, lineN1->y, m_width, data) -
-								TDepthFunc::depthAt(x, lineN2->y, m_width, data)) <= m_maxDelta)
+								         TDepthFunc::depthAt(x, lineN2->y, m_width, data)) <= m_maxDelta)
 							{
 								//Add this line to the blob
 								if (lineN2->blob == NULL)
@@ -526,7 +529,7 @@ namespace Sereno
 			for (const cv::Vec4i& v : defects)
 			{
 				float depth = v[3] / 256.0f;
-				if (depth > 20.0f) //  filter defects by depth, e.g more than 10
+				if (depth > 15.0f) //  filter defects by depth, e.g more than 10
 				{
 					int startID = v[0]; cv::Point ptStart(contour[startID]);
 					int endID = v[1]; cv::Point ptEnd(contour[endID]);
@@ -767,11 +770,12 @@ namespace Sereno
 			palmPos.x = 0;
 			palmPos.y = 0;
 
-			for (int i = distance.rows*1/3; i < distance.rows*2/3; i++)
+			for (int i = distance.rows*1/4; i < distance.rows*3/4; i++)
 			{
 				for (int j = 0; j < distance.cols; j++)
 				{
 					float dist = distance.at<float>(i, j);
+
 					if (maxPalmDist < dist)
 					{
 						palmPos.x = j;
