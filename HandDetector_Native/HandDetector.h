@@ -770,7 +770,7 @@ namespace Sereno
 			palmPos.x = 0;
 			palmPos.y = 0;
 
-			for (int i = distance.rows*1/4; i < distance.rows*3/4; i++)
+			for (int i = distance.rows*1/5; i < distance.rows*4/5; i++)
 			{
 				for (int j = 0; j < distance.cols; j++)
 				{

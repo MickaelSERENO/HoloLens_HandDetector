@@ -353,9 +353,9 @@ namespace Sereno
 		//We detect between 25 and 80 centimeters, with a blob of minimum size = 900 pixels
 		//Maximum wrist length : 100 pixels
 		if (guiNewSubtype == MFVideoFormat_L8)
-			m_handDetector = new HandDetection<D8Func>(width, height, 230, 630, 20, 700, 110);
+			m_handDetector = new HandDetection<D8Func>(width, height, 230, 630, 15, 700, 110);
 		else if (guiNewSubtype == MFVideoFormat_D16 || guiNewSubtype == MFVideoFormat_L16)
-			m_handDetector = new HandDetection<D16Func>(width, height, 230, 630, 20, 700, 110);
+			m_handDetector = new HandDetection<D16Func>(width, height, 230, 630, 15, 700, 110);
 		
 		m_mediaSubtype = guiNewSubtype;
 		TRACE(L"Media type setted. Width: %d, Height: %d, framerate: %f, format: %ws\n", width, height, (float)framerateNum/framerateDenum, (guiNewSubtype == MFVideoFormat_D16 ? L"D16" : (guiNewSubtype == MFVideoFormat_RGB24 ? L"RGB24" : (guiNewSubtype == MFVideoFormat_L8 ? L"L8" : L"ARGB32"))))
