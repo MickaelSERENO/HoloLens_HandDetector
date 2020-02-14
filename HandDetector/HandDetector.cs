@@ -10,6 +10,7 @@ using Windows.Media;
 using System.Linq;
 using System.Numerics;
 using Windows.Perception.Spatial;
+using Windows.Devices.Enumeration;
 
 namespace Sereno.HandDetector
 {
@@ -70,18 +71,25 @@ namespace Sereno.HandDetector
         /// <returns>The asynchronous task</returns>
         public static async Task<HandDetector> CreateAsync(String id=null)
         {
+            Debug.WriteLine("Initialize the hand detector");
+
             //Search for the correct media frame source
             MediaFrameSourceGroup selectedFrameSourceGroup = null;
             MediaFrameSourceInfo  selectedFrameSourceInfo  = null;
 
             IReadOnlyList<MediaFrameSourceGroup> allFrameSourceGroups = await MediaFrameSourceGroup.FindAllAsync();
 
-            foreach(MediaFrameSourceGroup group in allFrameSourceGroups)
+            Debug.WriteLine($"Found {allFrameSourceGroups.Count} frame sources...");
+            
+            foreach (MediaFrameSourceGroup group in allFrameSourceGroups)
             {
+                Debug.WriteLine($"Group: {group.DisplayName}");
+                Debug.WriteLine($"Found {group.SourceInfos.Count} source infos...");
                 foreach(MediaFrameSourceInfo info in group.SourceInfos)
                 {
+                    //Debug.WriteLine($"{info.SourceKind} : {info.MediaStreamType} -> {info.DeviceInformation.EnclosureLocation.Panel}");
                     //If an ID is given
-                    if((id == null || info.DeviceInformation.Id == id) && (info.MediaStreamType == MediaStreamType.VideoPreview || info.MediaStreamType == MediaStreamType.VideoRecord))
+                    if ((id == null || info.DeviceInformation.Id == id) && (info.MediaStreamType == MediaStreamType.VideoPreview || info.MediaStreamType == MediaStreamType.VideoRecord))
                     {
                         //Check the depth capabilities
                         if (info.SourceKind == MediaFrameSourceKind.Depth)
@@ -122,7 +130,7 @@ namespace Sereno.HandDetector
             m_mediaCapture = new MediaCapture();
             await m_mediaCapture.InitializeAsync(new MediaCaptureInitializationSettings()
             {
-                SourceGroup             = m_mediaGroup,
+                VideoDeviceId           = m_mediaInfo.DeviceInformation.Id,
                 SharingMode             = MediaCaptureSharingMode.SharedReadOnly,
                 MemoryPreference        = MediaCaptureMemoryPreference.Auto,   //For the Hololens, MediaCaptureMemoryPreference.CPU does not work
                 StreamingCaptureMode    = StreamingCaptureMode.Video
@@ -132,12 +140,12 @@ namespace Sereno.HandDetector
             Debug.WriteLine("Search a video profile...");
             VideoEncodingProperties videoProfile = null;
             var mediaProperties = m_mediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoPreview);
-            UInt32 maxHeight = 0;
 
-            foreach(var mediaProp in mediaProperties)
+            UInt32 maxHeight = 0;
+            foreach (var mediaProp in mediaProperties)
             {
                 VideoEncodingProperties videoProp = mediaProp as VideoEncodingProperties;
-                Debug.WriteLine($"VideoProp : {videoProp.Type}:{videoProp.Subtype}");
+                Debug.WriteLine($"VideoProp : {videoProp.Type}:{videoProp.Subtype} {videoProp.Width}x{videoProp.Height}");
                 if(videoProp.Subtype == "ARGB32" || videoProp.Subtype == "L8" || videoProp.Subtype == "D16" || videoProp.Subtype == "D8" || videoProp.Subtype == "L16" || videoProp.Subtype == "RGB24")
                 { 
                     if(maxHeight < videoProp.Height)
@@ -167,6 +175,7 @@ namespace Sereno.HandDetector
                 Debug.WriteLine(m_mediaInfo.DeviceInformation.Name);
                 m_mediaSink = new HDMediaSinkProxy();
                 IMediaExtension ext = await m_mediaSink.InitializeAsync(clbk, profile.Video);
+                
                 await m_mediaCapture.StartPreviewToCustomSinkAsync(profile, ext);
             }
 

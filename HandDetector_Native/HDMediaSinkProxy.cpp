@@ -48,8 +48,8 @@ namespace HandDetector_Native
 			ThrowIfError(Microsoft::WRL::MakeAndInitialize<HDMediaSink>(&m_spMediaSink, clbk, videoEncodingProperties))
 
 			Microsoft::WRL::ComPtr<IInspectable> spInspectable;
-			ThrowIfError(m_spMediaSink.As(&spInspectable))
-
+			ThrowIfError(m_spMediaSink.As(&spInspectable));
+			
 			return safe_cast<Windows::Media::IMediaExtension^>(reinterpret_cast<Object^>(spInspectable.Get()));
 		});
 	}

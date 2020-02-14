@@ -10,20 +10,6 @@
 #include <wrl\wrappers\corewrappers.h>
 
 
-/** Check the result of a HRESULT function*/
-#define CHECK(x) \
-	{\
-		HRESULT _hr = (x);\
-		if(!SUCCEEDED(_hr))\
-		{\
-			TRACE(L"HRESULT : %d", _hr)\
-			return _hr;\
-		}\
-	}
-
-/** Get the filename being compiled*/
-#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__))
-
 /** Debug trace on screen*/
 #define TRACE(format, ...) \
 	{\
@@ -35,8 +21,22 @@
 		OutputDebugString(_debugBuf);\
 	}
 
-#undef TRACE
-#define TRACE(format, ...) {}
+/** Check the result of a HRESULT function*/
+#define CHECK(x) \
+	{\
+		HRESULT _hr = (x);\
+		if(!SUCCEEDED(_hr))\
+		{\
+			TRACE(L"Check Failed. HRESULT : %d\n", _hr)\
+			return _hr;\
+		}\
+	}
+
+/** Get the filename being compiled*/
+#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__))
+
+//#undef TRACE
+//#define TRACE(format, ...) {}
 
 
 /** Throw an exception based on hr*/

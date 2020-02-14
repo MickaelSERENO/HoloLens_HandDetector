@@ -31,6 +31,7 @@ namespace Sereno
 
 		SampleData(const SampleData& cpy)
 		{
+			type = ST_NO_TYPE;
 			*this = cpy;
 		}
 

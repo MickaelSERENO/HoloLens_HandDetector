@@ -1,8 +1,7 @@
 #include "HDStreamSink.h"
-
 #include <string>
-
 #include "ICameraIntrinsics.h"
+#include "utils.h"
 
 namespace Sereno
 {
@@ -233,20 +232,20 @@ namespace Sereno
 
 	HRESULT HDStreamSink::Flush()
 	{
-		TRACE(L"In Flush\n")
+		TRACE(L"In Flush\n");
 		return S_OK;
 	}
 
 	HRESULT HDStreamSink::Shutdown()
 	{
-		TRACE(L"In Shutdown\n")
+		TRACE(L"In Shutdown\n");
 
 		return S_OK;
 	}
 
 	HRESULT HDStreamSink::IsMediaTypeSupported(IMFMediaType *pMediaType, IMFMediaType **ppMediaType)
 	{
-		TRACE(L"In IsMediaTypeSupported\n")
+		TRACE(L"In IsMediaTypeSupported\n");
 		if(pMediaType == nullptr)
 			return E_INVALIDARG;
 
@@ -254,15 +253,23 @@ namespace Sereno
 
 		GUID majorType = GUID_NULL;
 		CHECK(pMediaType->GetGUID(MF_MT_MAJOR_TYPE, &majorType))
-		if(majorType != MFMediaType_Video)
+		if (majorType != MFMediaType_Video)
+		{
+			TRACE(L"Not a video media type...\n");
 			return MF_E_INVALIDTYPE;
-
+		}
 		GUID guiNewSubtype;
-		CHECK(pMediaType->GetGUID(MF_MT_SUBTYPE, &guiNewSubtype))
+		CHECK(pMediaType->GetGUID(MF_MT_SUBTYPE, &guiNewSubtype));
 
-		if (guiNewSubtype != MFVideoFormat_RGB24 && guiNewSubtype != MFVideoFormat_ARGB32 && guiNewSubtype != MFVideoFormat_L8 && guiNewSubtype != MFVideoFormat_L16 && guiNewSubtype != MFVideoFormat_D16)
+		if (guiNewSubtype != MFVideoFormat_RGB24 &&
+			guiNewSubtype != MFVideoFormat_ARGB32 &&
+			guiNewSubtype != MFVideoFormat_L8 &&
+			guiNewSubtype != MFVideoFormat_L16 &&
+			guiNewSubtype != MFVideoFormat_D16)
+		{
+			TRACE(L"Not the correct media SubType...\n");
 			return MF_E_INVALIDTYPE;
-
+		}
 		// We don't return any "close match" types.
 		if(ppMediaType)
 			*ppMediaType = nullptr;
@@ -272,7 +279,7 @@ namespace Sereno
 
 	HRESULT HDStreamSink::GetMediaTypeCount(DWORD *pdwTypeCount)
 	{
-		TRACE(L"In GetMediaTypeCount\n")
+		TRACE(L"In GetMediaTypeCount\n");
 		if (pdwTypeCount == nullptr)
 			return E_INVALIDARG;
 		*pdwTypeCount = 1;
@@ -282,7 +289,7 @@ namespace Sereno
 
 	HRESULT HDStreamSink::GetMediaTypeByIndex(DWORD dwIndex, IMFMediaType **ppType)
 	{
-		TRACE(L"In GetMediaTypeByIndex\n")
+		TRACE(L"In GetMediaTypeByIndex\n");
 		if (ppType == nullptr)
 		{
 			return E_INVALIDARG;
@@ -303,23 +310,22 @@ namespace Sereno
 
 	HRESULT HDStreamSink::SetCurrentMediaType(IMFMediaType *pMediaType)
 	{
-		TRACE(L"In SetCurrentMediaType\n")
+		TRACE(L"In SetCurrentMediaType\n");
 		AutoLock lock(m_critSec);
 
 		// We don't allow format changes after streaming starts.
-		CHECK(ValidateOperation(OpSetMediaType))
+		CHECK(ValidateOperation(OpSetMediaType));
 
 		// We set media type already
 		if (m_state >= State_Ready)
 			CHECK(IsMediaTypeSupported(pMediaType, nullptr));
 
-		CHECK(MFCreateMediaType(m_spCurrentType.ReleaseAndGetAddressOf()))
-		CHECK(pMediaType->CopyAllItems(m_spCurrentType.Get()))
+		CHECK(MFCreateMediaType(m_spCurrentType.ReleaseAndGetAddressOf()));
+		CHECK(pMediaType->CopyAllItems(m_spCurrentType.Get()));
 
 		if(m_state < State_Ready)
 			m_state = State_Ready;
-
-			
+					
 		else if(m_state > State_Ready)
 		{
 			Microsoft::WRL::ComPtr<IMFMediaType> spType;
@@ -331,16 +337,19 @@ namespace Sereno
 
 		UINT32 width, height;
 		if (FAILED(MFGetAttributeSize(m_spCurrentType.Get(), MF_MT_FRAME_SIZE, &width, &height)))
+		{
+			TRACE(L"Could not get the size attribute...\n");
 			return S_OK;
+		}
 		m_streamWidth  = width;
 		m_streamHeight = height;
 
-		UINT32 framerateNum, framerateDenum;
+		UINT32 framerateNum = -1, framerateDenum=1;
 		if (FAILED(MFGetAttributeRatio(m_spCurrentType.Get(), MF_MT_FRAME_RATE, &framerateNum, &framerateDenum)))
-			return S_OK;
-
+			TRACE(L"Could not get the framerate attribute...\n");
+	
 		GUID guiNewSubtype;
-		CHECK(pMediaType->GetGUID(MF_MT_SUBTYPE, &guiNewSubtype))
+		CHECK(pMediaType->GetGUID(MF_MT_SUBTYPE, &guiNewSubtype));
 
 		//Delete the old hand detector
 		if (m_handDetector != NULL)
@@ -356,16 +365,22 @@ namespace Sereno
 			m_handDetector = new HandDetection<D8Func>(width, height, 230, 630, 15, 700, 110);
 		else if (guiNewSubtype == MFVideoFormat_D16 || guiNewSubtype == MFVideoFormat_L16)
 			m_handDetector = new HandDetection<D16Func>(width, height, 230, 630, 15, 700, 110);
+		else
+			TRACE(L"Could not determine GUID %ld\n", guiNewSubtype);
 		
 		m_mediaSubtype = guiNewSubtype;
-		TRACE(L"Media type setted. Width: %d, Height: %d, framerate: %f, format: %ws\n", width, height, (float)framerateNum/framerateDenum, (guiNewSubtype == MFVideoFormat_D16 ? L"D16" : (guiNewSubtype == MFVideoFormat_RGB24 ? L"RGB24" : (guiNewSubtype == MFVideoFormat_L8 ? L"L8" : L"ARGB32"))))
+		TRACE(L"Media type setted. Width: %d, Height: %d, framerate: %f, format: %ws\n", width, height, (float)((INT32)framerateNum) / framerateDenum, 
+			(guiNewSubtype == MFVideoFormat_D16 ? L"D16" : 
+			(guiNewSubtype == MFVideoFormat_RGB24 ? L"RGB24" : 
+			(guiNewSubtype == MFVideoFormat_L8 ? L"L8" : 
+			(guiNewSubtype == MFVideoFormat_L16 ? L"L16" : L"ARGB32")))));
 
 		return S_OK;
 	}
 
 	HRESULT HDStreamSink::GetCurrentMediaType(IMFMediaType **ppMediaType)
 	{
-		TRACE(L"In GetCurrentMediaType")
+		TRACE(L"In GetCurrentMediaType\n")
 
 		AutoLock lock(m_critSec);
 
@@ -570,6 +585,8 @@ namespace Sereno
 
 	HRESULT HDStreamSink::UpdateHandDetection(IMFSample* sample, BYTE* rawBuffer, unsigned long bufferCurrentLength)
 	{
+		//WriteSampleToFile(rawBuffer, bufferCurrentLength);
+
 		if (m_handDetector != NULL)
 		{
 			//Update the status
@@ -579,6 +596,7 @@ namespace Sereno
 			if (m_clbk != nullptr)
 			{
 				Platform::Collections::Vector<HandDetector_Native::Hand^>^ hands = ref new Platform::Collections::Vector<HandDetector_Native::Hand^>();
+
 
 				//Determine what depth function to use
 				DepthFunc depthFunc = NULL;
@@ -595,7 +613,6 @@ namespace Sereno
 				Microsoft::WRL::ComPtr<IInspectable> spSpatialCoordinateSystem = NULL;
 				if(SUCCEEDED(sample->GetUnknown(MFSampleExtension_Spatial_CameraCoordinateSystem, IID_PPV_ARGS(&spUnknown))))
 					spUnknown.As(&spSpatialCoordinateSystem);
-
 				
 				memset(&camera.CameraViewTransform, 0, sizeof(camera.CameraViewTransform));
 				memset(&camera.CameraProjectionTransform, 0, sizeof(camera.CameraProjectionTransform));
@@ -711,7 +728,8 @@ namespace Sereno
 				}
 
 				//Call the interface
-				m_clbk->OnHandUpdate(camera, safe_cast<Windows::Perception::Spatial::SpatialCoordinateSystem^>(reinterpret_cast<Platform::Object^>(spSpatialCoordinateSystem.Get())), hands);
+				if(spSpatialCoordinateSystem != NULL)
+					m_clbk->OnHandUpdate(camera, safe_cast<Windows::Perception::Spatial::SpatialCoordinateSystem^>(reinterpret_cast<Platform::Object^>(spSpatialCoordinateSystem.Get())), hands);
 			}
 		}
 		return S_OK;
